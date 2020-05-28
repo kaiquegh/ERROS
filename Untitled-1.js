@@ -13,22 +13,29 @@ import {
 } from 'react-native';
 import {Icon} from 'native-base';
 import Carousel, {Pagination} from 'react-native-snap-carousel';
-import ico_incrementacao from '../assets/ico_incrementacao.png';
-import ico_bugfix from '../assets/ico_bugfix.png';
-import ico_tarefa from '../assets/ico_tarefa.png';
+import ico_incrementacao from '../../assets/ico_incrementacao.png';
+import ico_bugfix from '../../assets/ico_bugfix.png';
+import ico_tarefa from '../../assets/ico_tarefa.png';
 import {useNavigation, useRoute} from '@react-navigation/native';
-import HeaderSearch from '../components/HeaderSearch/HeaderSearch';
-import Header from '../components/Header/Header';
-import api from '../api/api';
+import HeaderSearch from '../../components/HeaderSearch/HeaderSearch';
+import Header from '../../components/Header/Header';
+import api from '../../api/api';
+import styles from './styles';
 
 function Item({item}) {
-  var data = new Date();
-  var dia = data.getDate();
-  var mes = data.getMonth();
-  var ano = data.getFullYear();
-  const DATA = new Array(dia, mes, ano);
-
   const navigation = useNavigation();
+  var dataAtual = new Date();
+
+  //Função para formatar a Data
+  const FormatandoDatas = () => {
+    if (item.dueDate != null) {
+      const arrayData = item.dueDate.split('/');
+      const dataAtualizada =
+        arrayData[2] + '/' + arrayData[1] + '/' + arrayData[0];
+      return dataAtualizada;
+    }
+  };
+
   return (
     <TouchableOpacity onPress={() => navigation.navigate('TarefasInfo', item)}>
       <View style={styles.cardCarousel}>
@@ -37,7 +44,7 @@ function Item({item}) {
             flexDirection: 'row',
           }}>
           <View style={{flex: 1}}>
-            <Text style={styles.estiloTextoTitulo}>{item.tarefas.code}</Text>
+            <Text style={styles.estiloTextoTitulo}>{item.code}</Text>
           </View>
 
           <View style={{alignItems: 'flex-end'}}>
@@ -53,11 +60,15 @@ function Item({item}) {
                   : null
               }
             />
-            {item.dueDate ? (
-              <Text style={{marginRight: 10, marginTop: 10}}>
-                {item.dueDate}
+            {item.dueDate && new Date(item.dueDate) < dataAtual ? (
+              <Text style={{color: 'red', marginRight: 10, marginTop: 10}}>
+                {FormatandoDatas()}
               </Text>
-            ) : null}
+            ) : (
+              <Text style={{marginRight: 10, marginTop: 10}}>
+                {FormatandoDatas()}
+              </Text>
+            )}
           </View>
         </View>
 
@@ -71,7 +82,7 @@ function Item({item}) {
 
 const Carousel1 = ({navigation}) => {
   const [activeSlide, setActiveSlide] = useState(0);
-  const [dadosTarefa, setDadosTarefa] = useState([]);
+  const [dadosTarefa, setDadosTarefa] = useState();
   const [estaPesquisando, setEstaPesquisando] = useState(false);
   const [filtroSearch, setFiltroSearch] = useState('');
   const {params: tarefas} = useRoute();
@@ -84,7 +95,24 @@ const Carousel1 = ({navigation}) => {
       api
         .get('/tarefas/' + tarefas.id)
         .then(function(response) {
-          setDadosTarefa(response.data);
+          const grupos = response.data.reduce((prev, tarefa) => {
+            return Object.assign(prev, {
+              [tarefa.status]: (prev[tarefa.status] || []).concat(tarefa),
+            });
+          }, {});
+
+          const grupoDasTarefas = Object.entries(grupos);
+
+          // console.log('Imprimindo grupo ', grupoDasTarefas);
+          const tarefasGrupoArray = grupoDasTarefas.map(arrayTarefas => {
+            const titulo = arrayTarefas[0]; // grupo
+            const valor = arrayTarefas[1]; // tarefas
+            const qtTarefa = valor.length; //Quantidade Tarefas
+            return {titulo: titulo, tarefas: valor, qtTarefa: qtTarefa};
+          });
+          // console.log('Tarefas ', tarefasGrupoArray);
+          // setDadosTarefa(tarefasGrupoArray);
+          setDadosFiltrado(tarefasGrupoArray);
         })
         .catch(function(error) {
           console.log(error);
@@ -119,7 +147,8 @@ const Carousel1 = ({navigation}) => {
     if (!dadosTarefa) {
       return;
     }
-    const dadosFiltrado = dadosTarefa.filter(item => {
+    console.log('Dados Tarefas ', dadosTarefa[0].tarefas);
+    const dadosFiltrado = dadosTarefa[0].tarefas.filter(item => {
       if (
         item.code.toUpperCase().includes(filtroSearch.toUpperCase()) === false
       ) {
@@ -129,52 +158,19 @@ const Carousel1 = ({navigation}) => {
     });
 
     setDadosFiltrado(dadosFiltrado);
-  }, [dadosTarefa, filtroSearch, tarefas]);
+  }, [dadosTarefa, filtroSearch]);
 
-  //Colocando tipo do projeto no header da tela
   navigation.setOptions({
     title: tarefas.title,
   });
+  //Colocando tipo do projeto no header da tela
 
-  const grupos = dadosTarefa.reduce((prev, tarefa) => {
-    return Object.assign(prev, {
-      [tarefa.status]: (prev[tarefa.status] || []).concat(tarefa),
-    });
-  }, {});
-
-  const grupoDasTarefas = Object.entries(grupos);
-  console.log(grupoDasTarefas);
-  const tarefasGrupoArray = grupoDasTarefas.map(arrayTarefas => {
-    const titulo = arrayTarefas[0]; // grupo
-    const valor = arrayTarefas[1]; // tarefas
-    const qtTarefa = valor.length; //Quantidade Tarefas
-    return {tarefas: valor, qtTarefa: qtTarefa};
-  });
-  // console.log(tarefasGrupoArray[0]);
-  // const arrayTarefasOPEN = tarefasGrupoArray.filter(tarefas => {
-  //   if (tarefas.titulo === 'OPEN') {
-  //     return tarefas.tarefas;
-  //   }
-  // });
-  // const arrayTarefasCLOSED = tarefasGrupoArray.filter(tarefas => {
-  //   if (tarefas.titulo === 'CLOSED') {
-  //     return tarefas.tarefas;
-  //   }
-  // });
-  // console.log(arrayTarefasOPEN[0].tarefas);
-  // console.log(arrayTarefasCLOSED);
   const _renderItem = ({item, index}) => {
+    // console.log('Item: ', item);
     return (
       <FlatList
-        style={{
-          margin: 20,
-          borderRadius: 10,
-          backgroundColor: 'transparent',
-        }}
-        contentContainerStyle={{
-          borderRadius: 10,
-          backgroundColor: 'white',
-        }}
+        style={styles.flatList}
+        contentContainerStyle={styles.contentContainer}
         ListHeaderComponent={
           <>
             <View style={styles.titleView}>
@@ -193,20 +189,20 @@ const Carousel1 = ({navigation}) => {
           </>
         }
         keyExtractor={(item, index) => index.toString()}
-        data={tarefasGrupoArray}
+        data={item.tarefas}
         renderItem={({item}) => <Item item={item} />}
       />
     );
   };
 
   const {width} = Dimensions.get('window');
-
+  console.log('DadosFiltado: ', dadosFiltrado);
   return (
     <ImageBackground
-      source={require('../assets/background-kanban.png')}
+      source={require('../../assets/bg_kanban.png')}
       style={{flex: 1}}>
       <Carousel
-        data={tarefasGrupoArray}
+        data={dadosFiltrado}
         renderItem={_renderItem}
         lockScrollWhileSnapping={true}
         lockScrollTimeoutDuration={200}
@@ -219,24 +215,10 @@ const Carousel1 = ({navigation}) => {
       />
 
       <Pagination
-        dotsLength={grupoDasTarefas.length}
+        dotsLength={dadosFiltrado.length}
         activeDotIndex={activeSlide}
-        dotStyle={{
-          width: 15,
-          height: 15,
-          borderRadius: 20,
-          marginHorizontal: 8,
-          backgroundColor: '#fff',
-          elevation: 1,
-        }}
-        inactiveDotStyle={{
-          width: 15,
-          height: 15,
-          borderRadius: 20,
-          marginHorizontal: 8,
-          backgroundColor: '#a9a9a9',
-          elevation: 1,
-        }}
+        dotStyle={styles.dotStyle}
+        inactiveDotStyle={styles.inactiveDotStyle}
         inactiveDotOpacity={1}
         inactiveDotScale={0.6}
       />
@@ -245,45 +227,3 @@ const Carousel1 = ({navigation}) => {
 };
 
 export default Carousel1;
-
-const styles = StyleSheet.create({
-  titleText: {
-    fontWeight: 'bold',
-    color: '#2D939C',
-    paddingTop: 10,
-    marginLeft: 10,
-    fontSize: 16,
-  },
-  qtItens: {
-    color: '#00000099',
-    paddingTop: 10,
-    marginLeft: 10,
-    fontSize: 16,
-  },
-  titleView: {
-    borderColor: '#00000099',
-    flexDirection: 'row',
-    paddingBottom: 20,
-  },
-  estiloTextoTitulo: {
-    fontSize: 17,
-    marginTop: 7,
-    paddingLeft: 7,
-    marginBottom: 7,
-  },
-  estiloTextoDescricao: {
-    marginTop: 7,
-    paddingLeft: 7,
-    marginBottom: 7,
-    color: '#00000099',
-  },
-
-  cardCarousel: {
-    borderWidth: 0.4,
-    width: '90%',
-    marginBottom: 15,
-    alignSelf: 'center',
-    borderRadius: 5,
-    borderColor: '#0000004D',
-  },
-});
