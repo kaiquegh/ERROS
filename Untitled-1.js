@@ -82,7 +82,7 @@ function Item({item}) {
 
 const Carousel1 = ({navigation}) => {
   const [activeSlide, setActiveSlide] = useState(0);
-  const [dadosTarefa, setDadosTarefa] = useState();
+  const [dadosTarefa, setDadosTarefa] = useState([]);
   const [estaPesquisando, setEstaPesquisando] = useState(false);
   const [filtroSearch, setFiltroSearch] = useState('');
   const {params: tarefas} = useRoute();
@@ -111,7 +111,7 @@ const Carousel1 = ({navigation}) => {
             return {titulo: titulo, tarefas: valor, qtTarefa: qtTarefa};
           });
           // console.log('Tarefas ', tarefasGrupoArray);
-          // setDadosTarefa(tarefasGrupoArray);
+          setDadosTarefa(tarefasGrupoArray);
           setDadosFiltrado(tarefasGrupoArray);
         })
         .catch(function(error) {
@@ -120,7 +120,7 @@ const Carousel1 = ({navigation}) => {
     })();
   }, [tarefas.id]);
 
-  //Pesquisando tarefas
+  // Pesquisando tarefas
   useEffect(() => {
     navigation.setOptions({
       header:
@@ -147,8 +147,8 @@ const Carousel1 = ({navigation}) => {
     if (!dadosTarefa) {
       return;
     }
-    console.log('Dados Tarefas ', dadosTarefa[0].tarefas);
-    const dadosFiltrado = dadosTarefa[0].tarefas.filter(item => {
+    // console.log('Dados Tarefas ', dadosTarefa[0].tarefas);
+    const dadosFiltrado = dadosTarefa.tarefas.filter(item => {
       if (
         item.code.toUpperCase().includes(filtroSearch.toUpperCase()) === false
       ) {
@@ -156,14 +156,19 @@ const Carousel1 = ({navigation}) => {
       }
       return true;
     });
-
-    setDadosFiltrado(dadosFiltrado);
+    console.log(dadosFiltrado);
+    setDadosFiltrado([
+      {
+        qtTarefa: dadosFiltrado.length,
+        tarefas: dadosFiltrado,
+        titulo: dadosFiltrado.status,
+      },
+    ]);
   }, [dadosTarefa, filtroSearch]);
 
   navigation.setOptions({
     title: tarefas.title,
   });
-  //Colocando tipo do projeto no header da tela
 
   const _renderItem = ({item, index}) => {
     // console.log('Item: ', item);
@@ -196,13 +201,13 @@ const Carousel1 = ({navigation}) => {
   };
 
   const {width} = Dimensions.get('window');
-  console.log('DadosFiltado: ', dadosFiltrado);
+  // console.log('DadosFiltado: ', dadosFiltrado);
   return (
     <ImageBackground
       source={require('../../assets/bg_kanban.png')}
       style={{flex: 1}}>
       <Carousel
-        data={dadosFiltrado}
+        data={dadosTarefa}
         renderItem={_renderItem}
         lockScrollWhileSnapping={true}
         lockScrollTimeoutDuration={200}
